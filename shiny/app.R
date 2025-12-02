@@ -1,4 +1,3 @@
-# shiny/app.R (updated with Country All/None)
 library(shiny)
 library(leaflet)
 library(dplyr)
@@ -6,30 +5,29 @@ library(ggplot2)
 library(readr)
 library(glue)
 library(shinycssloaders)
-library(scales) # percent formatting
+library(scales) 
 
-# ---- utility: attempt to read columns robustly ----
+
 safe_read <- function(path) {
   if (!file.exists(path)) stop(glue("File not found: {path}"))
   readr::read_csv(path, show_col_types = FALSE)
 }
 
-# set data path relative to app.R (assumes R working dir is shiny/)
+
 data_path <- "./data_fatal/"
 
-# file paths
+
 drivers_fp <- file.path(data_path, "fatal_accidents_drivers.csv")
 marshals_fp <- file.path(data_path, "fatal_accidents_marshalls.csv")
 redflags_fp <- file.path(data_path, "red_flags.csv")
 safety_fp <- file.path(data_path, "safety_cars.csv")
 
-# read with safe_read; wrap in tryCatch so app loads and shows helpful msg
+
 drivers <- tryCatch(safe_read(drivers_fp), error = function(e) { message(e$message); NULL })
 marshals <- tryCatch(safe_read(marshals_fp), error = function(e) { message(e$message); NULL })
 redflags <- tryCatch(safe_read(redflags_fp), error = function(e) { message(e$message); NULL })
 safety <- tryCatch(safe_read(safety_fp), error = function(e) { message(e$message); NULL })
 
-# For robustness, try to discover column names we care about:
 find_col <- function(df, candidates) {
   if (is.null(df)) return(NULL)
   cols <- tolower(names(df))
@@ -39,7 +37,7 @@ find_col <- function(df, candidates) {
   return(NULL)
 }
 
-# Common candidates
+
 year_cols <- c("year", "race_year", "season")
 country_cols <- c("country", "race_country", "location_country", "circuit_country")
 constructor_cols <- c("constructor", "constructor_name", "team", "constructorId")
@@ -52,7 +50,7 @@ age_cols <- c("age", "driver_age")
 wins_cols <- c("wins", "driver_wins", "number_of_wins")
 races_cols <- c("races", "number_of_races", "race_times")
 
-# guess columns for drivers dataset
+
 drivers_year <- find_col(drivers, year_cols)
 drivers_country <- find_col(drivers, country_cols)
 drivers_constructor <- find_col(drivers, constructor_cols)
@@ -66,7 +64,7 @@ drivers_age <- find_col(drivers, age_cols)
 drivers_wins <- find_col(drivers, wins_cols)
 drivers_races <- find_col(drivers, races_cols)
 
-# Helper: convert to a unified dataframe with standard names
+
 normalize_drivers <- function(df) {
   if (is.null(df)) return(NULL)
   d <- df
@@ -97,7 +95,7 @@ normalize_drivers <- function(df) {
 drivers <- normalize_drivers(drivers)
 marshals <- normalize_drivers(marshals)
 
-# redflags: expect columns like reason, code, description
+
 if (!is.null(redflags)) {
   rf_reason <- find_col(redflags, c("reason", "cause", "flag_reason"))
   if (!is.null(rf_reason)) {
@@ -109,7 +107,7 @@ if (!is.null(redflags)) {
   }
 }
 
-# ---- Ensure race_status exists and normalize it ----
+
 ensure_status <- function(df) {
   if (is.null(df)) return(NULL)
   if (!("race_status" %in% names(df))) {
@@ -117,7 +115,7 @@ ensure_status <- function(df) {
     df$race_status <- "null"
   } else {
     df$race_status <- tolower(as.character(df$race_status))
-    # Normalize common values
+    
     df$race_status[df$race_status %in% c("0", "false", "no", "", NA)] <- "null"
     df$race_status[grepl("fatal|death|died|dead|true|1", df$race_status, ignore.case = TRUE)] <- "fatal"
     df$race_status[is.na(df$race_status)] <- "null"
@@ -128,24 +126,24 @@ ensure_status <- function(df) {
 drivers <- ensure_status(drivers)
 marshals <- ensure_status(marshals)
 
-# ---- UI ----
+
 ui <- fluidPage(
-  titlePanel("F1 Fatal Accidents — Interactive Dashboard"),
+  titlePanel("Interactive Dashboard"),
   sidebarLayout(
     sidebarPanel(
-      # 1. year slider
+      
       sliderInput("year_range", "Year range:", min = 1950, max = 2025, value = c(1970, 2020), sep = ""),
       
-      # 2. country with All / None
+      
       uiOutput("country_ui"),
       
-      # 3. constructor
+      
       uiOutput("constructor_ui"),
       
-      # 4. driver
+      
       uiOutput("driver_ui"),
       
-      # 5. race status as radio buttons (All / Fatal / Null)
+      
       radioButtons("race_status", "Race Status:", choices = c("All" = "All", "Fatal" = "fatal", "Null" = "null"), selected = "All", inline = TRUE),
       
       hr(),
@@ -172,24 +170,16 @@ ui <- fluidPage(
                  h4("Selected Driver Summary"),
                  uiOutput("driver_info")
         ),
-        tabPanel("Data Sources",
-                 h4("Loaded CSV Data Sources"),
-                 tags$ul(
-                   tags$li(glue("Drivers: {drivers_fp}")),
-                   tags$li(glue("Marshals: {marshals_fp}")),
-                   tags$li(glue("Red Flags: {redflags_fp}")),
-                   tags$li(glue("Safety Cars: {safety_fp}"))
-                 )
-        )
+        
       )
     )
   )
 )
 
-# ---- Server ----
+
 server <- function(input, output, session) {
   
-  # dynamic Country UI
+
   output$country_ui <- renderUI({
     d <- drivers
     if (is.null(d) || !("country" %in% names(d))) {
@@ -200,37 +190,37 @@ server <- function(input, output, session) {
     }
   })
   
-  # reactive dataset filtered by inputs
+  
   filtered_drivers <- reactive({
     d <- drivers
     if (is.null(d)) return(NULL)
     
-    # Year filter
+    
     if ("year" %in% names(d)) {
       yr_rng <- input$year_range
       d <- d %>% filter(is.na(year) | (year >= yr_rng[1] & year <= yr_rng[2]))
     }
     
-    # Country filter: All / None / specific
+   
     if (!is.null(input$country) && "country" %in% names(d)) {
       if (input$country == "None") {
-        d <- d[0,]  # return empty dataframe
+        d <- d[0,]  
       } else if (input$country != "All") {
         d <- d %>% filter(country == input$country)
       }
     }
     
-    # Constructor filter
+   
     if (!is.null(input$constructor) && input$constructor != "All" && "constructor" %in% names(d)) {
       d <- d %>% filter(constructor == input$constructor)
     }
     
-    # Driver filter
+   
     if (!is.null(input$driver) && input$driver != "All" && "driver" %in% names(d)) {
       d <- d %>% filter(driver == input$driver)
     }
     
-    # Race status filter
+    
     if (!is.null(input$race_status) && input$race_status != "All" && "race_status" %in% names(d)) {
       if (input$race_status == "fatal") {
         d <- d %>% filter(tolower(race_status) %in% c("fatal"))
@@ -239,7 +229,7 @@ server <- function(input, output, session) {
       }
     }
     
-    # Ensure st and color columns
+    
     if ("race_status" %in% names(d)) {
       d <- d %>%
         mutate(
@@ -257,7 +247,7 @@ server <- function(input, output, session) {
     d
   })
   
-  # dynamic UI choices for constructor and driver
+ 
   output$constructor_ui <- renderUI({
     d <- drivers
     if (is.null(d) || !("constructor" %in% names(d))) {
@@ -278,7 +268,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # Leaflet map
+  
   output$map <- renderLeaflet({
     d <- filtered_drivers()
     if (is.null(d)) return(leaflet() %>% addTiles() %>% setView(0, 0, zoom = 2))
@@ -299,7 +289,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # Bar/Line chart
+ 
   output$barline <- renderPlot({
     d <- filtered_drivers()
     if (is.null(d) || !("year" %in% names(d))) return(ggplot() + labs(title = "Insufficient data for yearly trends"))
@@ -335,7 +325,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # Age Boxplot
+  
   output$age_boxplot <- renderPlot({
     d <- filtered_drivers()
     if (is.null(d) || !("age" %in% names(d))) return(ggplot() + labs(title = "Insufficient age data"))
@@ -348,7 +338,7 @@ server <- function(input, output, session) {
       theme(legend.position = "none")
   })
   
-  # Cause Pie Chart
+  
   output$cause_pie <- renderPlot({
     if (is.null(redflags)) return(ggplot() + labs(title = "Red flags data not available"))
     
@@ -371,7 +361,7 @@ server <- function(input, output, session) {
       theme_void()
   })
   
-  # Driver Info Summary
+
   output$driver_info <- renderUI({
     d <- filtered_drivers()
     selected_driver_name <- input$driver
@@ -409,7 +399,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # download filtered CSV
+ 
   output$download_filtered_csv <- downloadHandler(
     filename = function() {
       paste0("drivers_filtered_", Sys.Date(), ".csv")
@@ -425,5 +415,5 @@ server <- function(input, output, session) {
   )
 }
 
-# Run the application
+
 shinyApp(ui = ui, server = server)

@@ -1,4 +1,4 @@
-# F1 Fatal Accident Analysis — Project
+# Fatal Accident Analysis — Project
 
 ## How to run
 
@@ -9,7 +9,7 @@
 
 ### Shiny
 
-- Place your CSVs in `data/data_fatal/`:
+- Place your CSVs in `./data_fatal/`:
   - fatal_accidents_drivers.csv
   - fatal_accidents_marshalls.csv
   - red_flags.csv

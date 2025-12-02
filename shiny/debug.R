@@ -1,4 +1,3 @@
-# shiny/app.R (fully patched)
 library(shiny)
 library(leaflet)
 library(dplyr)
@@ -6,9 +5,9 @@ library(ggplot2)
 library(readr)
 library(glue)
 library(shinycssloaders)
-library(scales) # percent formatting
+library(scales) 
 
-# ---- Utility Functions ----
+
 safe_read <- function(path) {
   if (!file.exists(path)) stop(glue("File not found: {path}"))
   readr::read_csv(path, show_col_types = FALSE)
@@ -25,7 +24,7 @@ marshals <- tryCatch(safe_read(marshals_fp), error = function(e) { message(e$mes
 redflags <- tryCatch(safe_read(redflags_fp), error = function(e) { message(e$message); NULL })
 safety <- tryCatch(safe_read(safety_fp), error = function(e) { message(e$message); NULL })
 
-# ---- Column Normalization ----
+
 normalize_df <- function(df, mapping) {
   if (is.null(df)) return(NULL)
   for (col in names(mapping)) {
@@ -48,7 +47,7 @@ marshals <- normalize_df(marshals, list(
   age = "Age"
 ))
 
-# ---- Ensure race_status column ----
+
 ensure_status <- function(df) {
   if (is.null(df)) return(NULL)
   if (!("race_status" %in% names(df))) df$race_status <- "null"
@@ -60,7 +59,6 @@ ensure_status <- function(df) {
 drivers <- ensure_status(drivers)
 marshals <- ensure_status(marshals)
 
-# ---- UI ----
 ui <- fluidPage(
   titlePanel("F1 Fatal Accidents — Interactive Dashboard"),
   sidebarLayout(
@@ -110,10 +108,10 @@ ui <- fluidPage(
   )
 )
 
-# ---- Server ----
+
 server <- function(input, output, session) {
 
-  # Dynamic UI for selectors
+ 
   output$country_ui <- renderUI({
     countries <- c("All", sort(unique(c(drivers$race, marshals$race))))
     selectInput("country", "Country:", choices = countries, selected = "All")
@@ -127,7 +125,7 @@ server <- function(input, output, session) {
     selectInput("driver", "Driver:", choices = choices, selected = "All")
   })
 
-  # Reactive filtered drivers
+  
   filtered_drivers <- reactive({
     d <- drivers
     if (!is.null(d)) {
@@ -144,7 +142,7 @@ server <- function(input, output, session) {
     d
   })
 
-  # Leaflet map: drivers + marshals
+  
   output$map <- renderLeaflet({
     df <- filtered_drivers()
     m <- leaflet() %>% addTiles() %>% setView(0, 0, zoom = 2)
@@ -160,7 +158,7 @@ server <- function(input, output, session) {
                     title = "Race Outcome", opacity = 1)
   })
 
-  # Barline: Races and Fatalities per year
+  
   output$barline <- renderPlot({
     df <- filtered_drivers()
     if (!is.null(df)) {
@@ -174,7 +172,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # Age Boxplot
+  
   output$age_boxplot <- renderPlot({
     df <- filtered_drivers()
     if (!is.null(df) && "age" %in% names(df)) {
@@ -185,7 +183,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # Causes Pie chart
+  
   output$cause_pie <- renderPlot({
     if (!is.null(redflags)) {
       rf <- redflags
@@ -197,7 +195,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # Safety Cars + Red Flags combined
+ 
   output$safety_redflags_plot <- renderPlot({
     if (!is.null(safety)) {
       sc <- safety
@@ -219,7 +217,7 @@ server <- function(input, output, session) {
     }
   })
 
-  # Driver Info
+  
   output$driver_info <- renderUI({
     df <- filtered_drivers()
     driver_name <- input$driver
@@ -246,7 +244,7 @@ server <- function(input, output, session) {
     )
   })
 
-  # Download CSV
+ 
   output$download_filtered_csv <- downloadHandler(
     filename = function() { paste0("drivers_filtered_", Sys.Date(), ".csv") },
     content = function(file) {
@@ -257,5 +255,5 @@ server <- function(input, output, session) {
 
 }
 
-# ---- Run App ----
+
 shinyApp(ui=ui, server=server)

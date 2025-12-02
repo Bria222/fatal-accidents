@@ -1,4 +1,3 @@
-/* Dark Mode */
 :root[data-theme='dark'] {
   --bs-body-bg: #121212;
   --bs-body-color: #e2e2e2;
@@ -10,12 +9,10 @@
   --nav-bg: #212529;
 }
 
-/* Navbar */
 .navbar {
   background-color: var(--nav-bg) !important;
 }
 
-/* Hero with video */
 .hero-section {
   position: relative;
   height: 90vh;
@@ -40,7 +37,6 @@
   margin-top: 20vh;
 }
 
-/* Reveal animation */
 .reveal {
   opacity: 0;
   transform: translateY(40px);
@@ -51,7 +47,6 @@
   transform: translateY(0);
 }
 
-/* Cards */
 .hover-card {
   background: var(--card-bg);
   border-radius: 15px;
@@ -62,14 +57,12 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* KPI counters */
 .kpi {
   font-size: 3rem;
   font-weight: bold;
   color: #d50000;
 }
 
-/* Shiny mockup */
 .shiny-mockup {
   width: 80%;
   border-radius: 15px;
