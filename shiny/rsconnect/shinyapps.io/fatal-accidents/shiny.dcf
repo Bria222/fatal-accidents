@@ -1,0 +1,12 @@
+name: shiny
+title: shiny
+username: fatal-accidents
+account: fatal-accidents
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16216206
+bundleId: 11263231
+url: https://fatal-accidents.shinyapps.io/shiny/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
