@@ -1,22 +1,27 @@
-# Fatal Accident Analysis — Project
+# F1 Fatal Accident Analysis — Project
 
-## How to run
+[![Shiny App](https://img.shields.io/badge/Shiny-App-blue)](https://fatal-accidents.shinyapps.io/shiny/)  
+[![License](https://img.shields.io/badge/License-MIT-green)]()
 
-### Website (GitHub Pages)
+---
 
-- Push the `docs/` folder to the root of the repository (or enable GitHub Pages from `docs/` branch).
-- The static website will show `index.html`.
+## Project Overview
 
-### Shiny
+This project explores **historical fatal accidents in Formula 1**, analyzing drivers, marshals, red flags, and safety car deployments. It includes:
 
-- Place your CSVs in `./data_fatal/`:
-  - fatal_accidents_drivers.csv
-  - fatal_accidents_marshalls.csv
-  - red_flags.csv
-  - safety_cars.csv
-- From RStudio, set working dir to `shiny/` and run `shiny::runApp("app.R")`.
-- Or deploy to shinyapps.io and embed via iframe in `docs/index.html`.
+- Interactive **Shiny dashboard** for exploring accidents and driver statistics.
+- **Static website** showcasing the analysis, key insights, and visualizations.
+- **Data cleaning & preprocessing** steps to ensure consistent, analysis-ready datasets.
 
-## Notes
+---
 
-- The Shiny app contains heuristics to find common column names; if some plots are empty, inspect column names and update `find_col()` candidate lists in `shiny/app.R`.
+## Prerequisites
+
+- R ≥ 4.2 with the following packages installed:
+  ```R
+  install.packages(c(
+    "shiny", "leaflet", "dplyr", "ggplot2",
+    "readr", "glue", "shinycssloaders",
+    "lubridate", "stringr", "scales"
+  ))
+  ```
