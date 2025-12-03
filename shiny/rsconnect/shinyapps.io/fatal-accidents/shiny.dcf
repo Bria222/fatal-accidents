@@ -5,7 +5,7 @@ account: fatal-accidents
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 16216206
-bundleId: 11265148
+bundleId: 11269488
 url: https://fatal-accidents.shinyapps.io/shiny/
 version: 1
 asMultiple: FALSE
