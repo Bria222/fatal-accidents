@@ -5,15 +5,17 @@ library(ggplot2)
 library(readr)
 library(glue)
 library(shinycssloaders)
-library(scales) 
+library(scales)
 
-
+#-----------------------------------
+# SAFE READS
+#-----------------------------------
 safe_read <- function(path) {
   if (!file.exists(path)) stop(glue("File not found: {path}"))
   readr::read_csv(path, show_col_types = FALSE)
 }
 
-data_path <- "../data/data_fatal/"
+data_path <- "./data_fatal/"
 drivers_fp <- file.path(data_path, "fatal_accidents_drivers.csv")
 marshals_fp <- file.path(data_path, "fatal_accidents_marshalls.csv")
 redflags_fp <- file.path(data_path, "red_flags.csv")
@@ -24,236 +26,310 @@ marshals <- tryCatch(safe_read(marshals_fp), error = function(e) { message(e$mes
 redflags <- tryCatch(safe_read(redflags_fp), error = function(e) { message(e$message); NULL })
 safety <- tryCatch(safe_read(safety_fp), error = function(e) { message(e$message); NULL })
 
-
-normalize_df <- function(df, mapping) {
+#-----------------------------------
+# COLUMN FINDER
+#-----------------------------------
+find_col <- function(df, candidates) {
   if (is.null(df)) return(NULL)
-  for (col in names(mapping)) {
-    if (mapping[[col]] %in% names(df)) names(df)[names(df) == mapping[[col]]] <- col
+  cols <- tolower(names(df))
+  for (c in candidates) {
+    if (c %in% cols) return(names(df)[which(cols == c)[1]])
   }
-  return(df)
+  return(NULL)
 }
 
-drivers <- normalize_df(drivers, list(
-  driver = "Driver",
-  constructor = "Car",
-  race = "Event",
-  race_date = "Date Of Accident",
-  age = "Age"
-))
-marshals <- normalize_df(marshals, list(
-  driver = "Name",
-  race = "Event",
-  race_date = "Date Of Accident",
-  age = "Age"
-))
+# Candidate names
+year_cols <- c("year", "race_year", "season")
+country_cols <- c("country", "race_country", "location_country", "circuit_country")
+constructor_cols <- c("constructor", "constructor_name", "team", "constructorId")
+driver_cols <- c("driver", "driver_name", "driverid", "driver_name_full")
+race_name_cols <- c("race", "race_name", "name")
+date_cols <- c("date", "race_date", "r_date")
+lat_cols <- c("lat", "latitude")
+lon_cols <- c("lon", "lng", "longitude")
+age_cols <- c("age", "driver_age")
+wins_cols <- c("wins", "driver_wins", "number_of_wins")
+races_cols <- c("races", "number_of_races", "race_times")
 
+#-----------------------------------
+# NORMALIZATION
+#-----------------------------------
+drivers_year <- find_col(drivers, year_cols)
+drivers_country <- find_col(drivers, country_cols)
+drivers_constructor <- find_col(drivers, constructor_cols)
+drivers_driver <- find_col(drivers, driver_cols)
+drivers_race <- find_col(drivers, race_name_cols)
+drivers_date <- find_col(drivers, date_cols)
+drivers_lat <- find_col(drivers, lat_cols)
+drivers_lon <- find_col(drivers, lon_cols)
+drivers_status <- find_col(drivers, c("race_status","status","fatal","fatality"))
+drivers_age <- find_col(drivers, age_cols)
+drivers_wins <- find_col(drivers, wins_cols)
+drivers_races <- find_col(drivers, races_cols)
 
+normalize_drivers <- function(df) {
+  if (is.null(df)) return(NULL)
+  d <- df
+  rename_map <- list()
+
+  if (!is.null(drivers_year)) rename_map[[drivers_year]] <- "year"
+  if (!is.null(drivers_country)) rename_map[[drivers_country]] <- "country"
+  if (!is.null(drivers_constructor)) rename_map[[drivers_constructor]] <- "constructor"
+  if (!is.null(drivers_driver)) rename_map[[drivers_driver]] <- "driver"
+  if (!is.null(drivers_race)) rename_map[[drivers_race]] <- "race"
+  if (!is.null(drivers_date)) rename_map[[drivers_date]] <- "race_date"
+  if (!is.null(drivers_lat)) rename_map[[drivers_lat]] <- "lat"
+  if (!is.null(drivers_lon)) rename_map[[drivers_lon]] <- "lon"
+  if (!is.null(drivers_status)) rename_map[[drivers_status]] <- "race_status"
+  if (!is.null(drivers_age)) rename_map[[drivers_age]] <- "age"
+  if (!is.null(drivers_wins)) rename_map[[drivers_wins]] <- "wins"
+  if (!is.null(drivers_races)) rename_map[[drivers_races]] <- "races"
+
+  for (o in names(rename_map)) names(d)[names(d) == o] <- rename_map[[o]]
+
+  if ("year" %in% names(d)) d$year <- as.integer(d$year)
+  if ("lat" %in% names(d)) d$lat <- as.numeric(d$lat)
+  if ("lon" %in% names(d)) d$lon <- as.numeric(d$lon)
+  return(d)
+}
+
+drivers <- normalize_drivers(drivers)
+marshals <- normalize_drivers(marshals)
+
+#-----------------------------------
+# CLEAN RED FLAGS
+#-----------------------------------
+if (!is.null(redflags)) {
+  rf_reason <- find_col(redflags, c("reason","cause","flag_reason"))
+  if (!is.null(rf_reason)) names(redflags)[names(redflags) == rf_reason] <- "reason"
+
+  rf_year_col <- find_col(redflags, year_cols)
+  if (!is.null(rf_year_col) && rf_year_col != "year") names(redflags)[names(redflags) == rf_year_col] <- "year"
+}
+
+#-----------------------------------
+# STATUS NORMALIZATION
+#-----------------------------------
 ensure_status <- function(df) {
   if (is.null(df)) return(NULL)
-  if (!("race_status" %in% names(df))) df$race_status <- "null"
-  df$race_status <- tolower(as.character(df$race_status))
-  df$race_status[grepl("fatal|death|died|dead", df$race_status, ignore.case = TRUE)] <- "fatal"
-  df$race_status[is.na(df$race_status) | df$race_status == ""] <- "null"
+
+  if (!("race_status" %in% names(df))) {
+    df$race_status <- "null"
+  } else {
+    df$race_status <- tolower(as.character(df$race_status))
+    df$race_status[df$race_status %in% c("0","false","no","",NA)] <- "null"
+    df$race_status[grepl("fatal|death|died|dead|true|1", df$race_status)] <- "fatal"
+  }
   df
 }
+
 drivers <- ensure_status(drivers)
 marshals <- ensure_status(marshals)
 
+#-----------------------------------
+# UI REDESIGN — LOOKS LIKE SKETCH
+#-----------------------------------
+
 ui <- fluidPage(
-  titlePanel("F1 Fatal Accidents — Interactive Dashboard"),
+
+  tags$style(HTML("
+    .card-box {
+      background: #fff;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 18px;
+    }
+    .title-section {
+      font-weight: 700;
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+  ")),
+
+  titlePanel("F1 Race Accidents Dashboard"),
+
   sidebarLayout(
+
     sidebarPanel(
-      sliderInput("year_range", "Year range:", min = 1950, max = 2025, value = c(1970, 2020), sep = ""),
+      width = 3,
+      sliderInput("year_range", "Year Range:",
+                  min = 1950, max = 2025,
+                  value = c(1980, 2020), sep = ""),
+
       uiOutput("country_ui"),
       uiOutput("constructor_ui"),
       uiOutput("driver_ui"),
-      radioButtons("race_status", "Race Status:", choices = c("All" = "All", "Fatal" = "fatal", "Null" = "null"), selected = "All", inline = TRUE),
+
+      radioButtons("race_status", "Race Status:", 
+                   choices = c("All","Fatal","Null"),
+                   inline = TRUE),
+
       hr(),
-      downloadButton("download_filtered_csv", "Download filtered data (CSV)")
+      downloadButton("download_filtered_csv", "Download CSV")
     ),
+
     mainPanel(
-      tabsetPanel(
-        tabPanel("Map & Trends",
-                 h4("World Map (fatal vs non-fatal)"),
-                 withSpinner(leafletOutput("map", height = 450)),
-                 br(),
-                 h4("Yearly Races / Fatal Counts"),
-                 withSpinner(plotOutput("barline", height = 300))
+
+      fluidRow(
+        column(8,
+               div(class="card-box",
+                   div(class="title-section", "World Map (Fatal vs Non-Fatal)"),
+                   withSpinner(leafletOutput("map", height = 420))
+               )
         ),
-        tabPanel("Age Comparison",
-                 h4("Driver Age: Fatal vs Null"),
-                 withSpinner(plotOutput("age_boxplot", height = 350))
+        column(4,
+               div(class="card-box",
+                   div(class="title-section", "Wins by Year"),
+                   withSpinner(plotOutput("barline", height = 420))
+               )
+        )
+      ),
+
+      fluidRow(
+        column(4,
+               div(class="card-box",
+                   div(class="title-section", "Driver Age — Fatal vs Null"),
+                   withSpinner(plotOutput("age_boxplot", height = 300))
+               )
         ),
-        tabPanel("Causes",
-                 h4("Fatal Accident Causes"),
-                 withSpinner(plotOutput("cause_pie", height = 350)),
-                 h4("Safety Cars / Red Flags"),
-                 withSpinner(plotOutput("safety_redflags_plot", height = 350))
+        column(4,
+               div(class="card-box",
+                   div(class="title-section", "Fatal Causes Breakdown"),
+                   withSpinner(plotOutput("cause_pie", height = 300))
+               )
         ),
-        tabPanel("Driver Details",
-                 h4("Selected Driver Summary"),
-                 uiOutput("driver_info")
-        ),
-        tabPanel("Data Sources",
-                 h4("Loaded CSV Data Sources"),
-                 tags$ul(
-                   tags$li(glue("Drivers: {drivers_fp}")),
-                   tags$li(glue("Marshals: {marshals_fp}")),
-                   tags$li(glue("Red Flags: {redflags_fp}")),
-                   tags$li(glue("Safety Cars: {safety_fp}"))
-                 )
+        column(4,
+               div(class="card-box",
+                   div(class="title-section", "Driver Summary"),
+                   withSpinner(uiOutput("driver_info"))
+               )
         )
       )
     )
   )
 )
 
-
+#-----------------------------------
+# SERVER
+#-----------------------------------
 server <- function(input, output, session) {
 
- 
   output$country_ui <- renderUI({
-    countries <- c("All", sort(unique(c(drivers$race, marshals$race))))
-    selectInput("country", "Country:", choices = countries, selected = "All")
-  })
-  output$constructor_ui <- renderUI({
-    choices <- c("All", sort(unique(na.omit(drivers$constructor))))
-    selectInput("constructor", "Constructor:", choices = choices, selected = "All")
-  })
-  output$driver_ui <- renderUI({
-    choices <- c("All", sort(unique(na.omit(drivers$driver))))
-    selectInput("driver", "Driver:", choices = choices, selected = "All")
+    d <- drivers
+    if (is.null(d)) return(selectInput("country","Country:",c("All")))
+    selectInput("country","Country:",c("All",sort(unique(d$country))))
   })
 
-  
   filtered_drivers <- reactive({
     d <- drivers
-    if (!is.null(d)) {
-      if (!is.null(input$year_range) && "race_date" %in% names(d)) {
-        d <- d %>% filter(as.numeric(substr(race_date, nchar(race_date)-3, nchar(race_date))) >= input$year_range[1] &
-                            as.numeric(substr(race_date, nchar(race_date)-3, nchar(race_date))) <= input$year_range[2])
-      }
-      if (!is.null(input$country) && input$country != "All") d <- d %>% filter(race == input$country)
-      if (!is.null(input$constructor) && input$constructor != "All") d <- d %>% filter(constructor == input$constructor)
-      if (!is.null(input$driver) && input$driver != "All") d <- d %>% filter(driver == input$driver)
-      if (!is.null(input$race_status) && input$race_status != "All") d <- d %>% filter(race_status == input$race_status)
-      d$color <- ifelse(d$race_status == "fatal", "red", "green")
-    }
+    if (is.null(d)) return(NULL)
+
+    d <- d %>% filter(year >= input$year_range[1] & year <= input$year_range[2])
+
+    if (input$country != "All") d <- d %>% filter(country == input$country)
+    if (input$constructor != "All") d <- d %>% filter(constructor == input$constructor)
+    if (input$driver != "All") d <- d %>% filter(driver == input$driver)
+
+    if (input$race_status == "Fatal") d <- d %>% filter(race_status == "fatal")
+    if (input$race_status == "Null")  d <- d %>% filter(race_status == "null")
+
+    d$color <- ifelse(d$race_status == "fatal", "red", "green")
+
     d
   })
 
-  
+  output$constructor_ui <- renderUI({
+    d <- drivers
+    selectInput("constructor","Constructor:",c("All",sort(unique(d$constructor))))
+  })
+
+  output$driver_ui <- renderUI({
+    d <- drivers
+    selectInput("driver","Driver:",c("All",sort(unique(d$driver))))
+  })
+
   output$map <- renderLeaflet({
-    df <- filtered_drivers()
-    m <- leaflet() %>% addTiles() %>% setView(0, 0, zoom = 2)
-    if (!is.null(df) && all(c("lat","lon") %in% names(df))) {
-      m <- m %>% addCircleMarkers(data = df, ~lon, ~lat, color = ~color, radius = 6, stroke = FALSE, fillOpacity = 0.7,
-                                  popup = ~glue("<b>Race:</b> {race}<br><b>Driver:</b> {driver}<br><b>Status:</b> {race_status}"))
-    }
-    if (!is.null(marshals) && all(c("lat","lon") %in% names(marshals))) {
-      m <- m %>% addCircleMarkers(data = marshals, ~lon, ~lat, color = "blue", radius = 5, stroke = FALSE, fillOpacity = 0.5,
-                                  popup = ~glue("<b>Marshal:</b> {driver}<br><b>Race:</b> {race}<br><b>Status:</b> {race_status}"))
-    }
-    m %>% addLegend("bottomright", colors = c("red", "green", "blue"), labels = c("Fatal Driver","Null Driver","Marshal"),
-                    title = "Race Outcome", opacity = 1)
+    d <- filtered_drivers()
+    if (is.null(d)) return(leaflet() %>% addTiles())
+
+    leaflet(d) %>%
+      addProviderTiles(providers$CartoDB.Positron) %>%
+      addCircleMarkers(~lon, ~lat, color=~color, radius=6, fillOpacity=0.7) %>%
+      addLegend("bottomright", colors=c("red","green"),
+                labels=c("Fatal","Null"), title="Race Outcome")
   })
 
-  
   output$barline <- renderPlot({
-    df <- filtered_drivers()
-    if (!is.null(df)) {
-      df$year <- as.numeric(substr(df$race_date, nchar(df$race_date)-3, nchar(df$race_date)))
-      plot_df <- df %>% group_by(year) %>% summarise(total = n(), fatal = sum(race_status=="fatal", na.rm=TRUE))
-      ggplot(plot_df, aes(x=year)) +
-        geom_col(aes(y=total), fill="gray", alpha=0.6) +
-        geom_line(aes(y=fatal*max(total)/max(fatal)), color="red", size=1) +
-        scale_y_continuous(name="# Races", sec.axis=sec_axis(~./(max(total)/max(fatal)), name="# Fatalities")) +
-        labs(title="Races and Fatalities by Year") + theme_minimal()
-    }
+    d <- filtered_drivers()
+    if (is.null(d)) return(NULL)
+
+    plot_data <- d %>%
+      group_by(year) %>%
+      summarize(total_races=n(),
+                fatal=sum(race_status=="fatal"))
+
+    ggplot(plot_data, aes(year)) +
+      geom_col(aes(y=total_races), fill="gray80") +
+      geom_line(aes(y=fatal * max(total_races)/max(fatal)), color="red", size=1.1) +
+      scale_y_continuous(name="Total Races",
+                         sec.axis = sec_axis(~ . * max(fatal)/max(total_races),
+                                             name="Fatalities")) +
+      theme_minimal() +
+      labs(title="Races & Fatalities by Year")
   })
 
-  
   output$age_boxplot <- renderPlot({
-    df <- filtered_drivers()
-    if (!is.null(df) && "age" %in% names(df)) {
-      ggplot(df, aes(x=race_status, y=age, fill=race_status)) +
-        geom_boxplot() + scale_fill_manual(values=c("fatal"="red","null"="green")) +
-        labs(title="Driver Age Comparison: Fatal vs Null Outcomes", x="Outcome", y="Age") +
-        theme_minimal() + theme(legend.position="none")
-    }
+    d <- filtered_drivers()
+    if (is.null(d) || !"age" %in% names(d)) return(NULL)
+
+    ggplot(d, aes(race_status, age, fill=race_status)) +
+      geom_boxplot() +
+      scale_fill_manual(values=c("fatal"="red","null"="green")) +
+      theme_minimal() +
+      labs(title="Age Comparison", x="", y="Age")
   })
 
-  
   output$cause_pie <- renderPlot({
-    if (!is.null(redflags)) {
-      rf <- redflags
-      if ("year" %in% names(rf)) rf <- rf %>% filter(year >= input$year_range[1] & year <= input$year_range[2])
-      rf <- rf %>% group_by(Cause=Cause) %>% summarise(count=n(), .groups="drop")
-      ggplot(rf, aes(x="", y=count, fill=Cause)) +
-        geom_bar(stat="identity", width=1) + coord_polar("y") +
-        labs(title="Red Flags Breakdown", fill="Cause") + theme_void()
-    }
+    if (is.null(redflags)) return(NULL)
+
+    rf <- redflags %>% filter(year >= input$year_range[1] & year <= input$year_range[2])
+
+    ggplot(rf, aes(x="", fill=reason)) +
+      geom_bar() +
+      coord_polar("y") +
+      theme_void() +
+      labs(title="Red Flag Causes")
   })
 
- 
-  output$safety_redflags_plot <- renderPlot({
-    if (!is.null(safety)) {
-      sc <- safety
-      sc$year <- as.numeric(substr(sc$Race, nchar(sc$Race)-3, nchar(sc$Race)))
-      sc <- sc %>% filter(year >= input$year_range[1] & year <= input$year_range[2])
-      sc_count <- sc %>% group_by(year) %>% summarise(safety_cars = n(), .groups="drop")
-      if (!is.null(redflags)) {
-        rf <- redflags
-        rf$year <- as.numeric(substr(rf$Race, nchar(rf$Race)-3, nchar(rf$Race)))
-        rf <- rf %>% filter(year >= input$year_range[1] & year <= input$year_range[2])
-        rf_count <- rf %>% group_by(year) %>% summarise(red_flags = n(), .groups="drop")
-        plot_df <- full_join(sc_count, rf_count, by="year") %>% tidyr::replace_na(list(safety_cars=0, red_flags=0))
-        ggplot(plot_df, aes(x=year)) +
-          geom_line(aes(y=safety_cars, color="Safety Cars"), size=1) +
-          geom_line(aes(y=red_flags, color="Red Flags"), size=1) +
-          scale_color_manual(values=c("Safety Cars"="blue","Red Flags"="orange")) +
-          labs(title="Safety Cars & Red Flags by Year", y="Count", x="Year", color="Legend") + theme_minimal()
-      }
-    }
-  })
-
-  
   output$driver_info <- renderUI({
-    df <- filtered_drivers()
-    driver_name <- input$driver
-    if (is.null(df) || driver_name=="All") return(p("Select a specific driver from the sidebar."))
-    driver_data <- df %>% filter(driver==driver_name)
-    if (nrow(driver_data)==0) return(p("No data for selected driver in this range."))
-    total <- nrow(driver_data)
-    fatal <- sum(driver_data$race_status=="fatal")
-    alive <- total - fatal
-    avg_age <- if ("age" %in% names(driver_data)) round(mean(driver_data$age, na.rm=TRUE),1) else NA
-    fatal_rate <- percent(fatal/total)
+    d <- filtered_drivers()
+    if (is.null(d) || input$driver == "All") return(p("Select a driver."))
+
+    dd <- d %>% filter(driver == input$driver)
+    if (nrow(dd) == 0) return(p("No driver data."))
+
+    total <- nrow(dd)
+    fat <- sum(dd$race_status=="fatal")
+    alive <- total - fat
+
+    avg_age <- round(mean(dd$age, na.rm=TRUE),1)
+
     div(
-      h4(driver_name),
-      fluidRow(
-        column(4, wellPanel(h5("Avg Age"), p(avg_age))),
-        column(4, wellPanel(h5("Total Races"), p(total))),
-        column(4, wellPanel(h5("Fatal Rate"), p(fatal_rate)))
-      ),
-      h5("Race Outcomes"),
-      fluidRow(
-        column(6, wellPanel(h5("Alive/Null"), p(alive))),
-        column(6, wellPanel(h5("Died/Fatal"), p(fatal)))
-      )
+      h4(input$driver),
+      p(strong("Avg Age: "), avg_age),
+      p(strong("Total Races: "), total),
+      p(strong("Fatal Races: "), fat),
+      p(strong("Alive/Null: "), alive)
     )
   })
 
- 
   output$download_filtered_csv <- downloadHandler(
-    filename = function() { paste0("drivers_filtered_", Sys.Date(), ".csv") },
-    content = function(file) {
-      d <- filtered_drivers()
-      write.csv(d %||% data.frame(), file, row.names=FALSE)
+    filename=function(){ paste0("drivers_",Sys.Date(),".csv") },
+    content=function(file){
+      write.csv(filtered_drivers(), file, row.names=FALSE)
     }
   )
-
 }
 
-
-shinyApp(ui=ui, server=server)
+shinyApp(ui, server)

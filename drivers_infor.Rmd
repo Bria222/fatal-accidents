@@ -3,7 +3,7 @@ title: "drives_infor"
 author: "Lanlan_Qing"
 date: "2025-11-14"
 output: html_document
----
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -15,11 +15,11 @@ library(readr)
 
 ### Import Data
 ```{r}
-# For fatal accidents involving drivers dataset
+
 fatal_driver_infor = read_csv("./data_fatal/fatal_accidents_drivers.csv") |>
   janitor::clean_names()
 
-# For total drivers information dataset
+
 total_driver_infor = read_csv("./data_origin/drivers.csv") |>
   janitor::clean_names() |>
   mutate(driver = paste0(forename, " ", surname)) |>
@@ -32,7 +32,7 @@ fatal_driver_df = left_join(fatal_driver_infor, total_driver_infor)
 ### Supplementary information 
 
 ```{r}
-# Fill in missing information through google
+
 missing_driver_row = fatal_driver_df |>
   filter(is.na(dob)) |>
   mutate(dob = ymd(c("1923-05-08","1928-10-23", "1932-11-15", "1927-04-16", "1936-06-23", "1932-12-22",

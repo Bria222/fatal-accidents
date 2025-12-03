@@ -13,16 +13,25 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css" />
+
+    <style>
+      .hover-card:hover {
+        transform: translateY(-5px);
+        transition: all 0.3s ease;
+      }
+      .section-title {
+        margin-bottom: 2rem;
+      }
+    </style>
   </head>
 
   <body>
-    <!-- NAVBAR -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
       <div class="container">
         <a class="navbar-brand fw-bold" href="index.html"
           >F1 Fatalities Analysis</a
         >
-
         <button
           class="navbar-toggler"
           data-bs-toggle="collapse"
@@ -63,7 +72,7 @@
       </div>
     </nav>
 
-    <!-- HEADER -->
+    <!-- Header -->
     <header class="py-5 bg-primary text-white text-center">
       <div class="container">
         <h1 class="fw-bold">Final Project Report</h1>
@@ -73,7 +82,7 @@
       </div>
     </header>
 
-    <!-- REPORT SUMMARY -->
+    <!-- Report Overview -->
     <section class="py-5">
       <div class="container">
         <h2 class="fw-bold mb-3">Report Overview</h2>
@@ -83,11 +92,10 @@
           flag events, and safety car deployments.
         </p>
         <p>
-          The analysis was conducted in R using <strong>RMarkdown</strong>, with
-          data cleaning, statistical analysis, visualizations, and final
-          insights included in a reproducible workflow.
+          The analysis was conducted in R using <strong>RMarkdown</strong>,
+          including data cleaning, statistical analysis, visualizations, and
+          final insights in a reproducible workflow.
         </p>
-
         <div class="mt-4">
           <a href="report.html" class="btn btn-success btn-lg me-2"
             >View HTML Report</a
@@ -99,14 +107,14 @@
       </div>
     </section>
 
+    <!-- Table of Contents -->
     <section class="py-5 bg-light">
       <div class="container">
-        <h2 class="fw-bold text-center mb-4">Table of Contents</h2>
-
+        <h2 class="fw-bold text-center section-title">Table of Contents</h2>
         <div class="row g-4">
-          <!-- 1 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <!-- TOC Cards -->
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">1. Introduction</h4>
                 <p>
@@ -116,10 +124,8 @@
               </div>
             </div>
           </div>
-
-          <!-- 2 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">2. Data Sources</h4>
                 <p>
@@ -129,10 +135,8 @@
               </div>
             </div>
           </div>
-
-          <!-- 3 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">3. Data Cleaning</h4>
                 <p>
@@ -142,10 +146,8 @@
               </div>
             </div>
           </div>
-
-          <!-- 4 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">4. Exploratory Data Analysis</h4>
                 <p>
@@ -155,10 +157,8 @@
               </div>
             </div>
           </div>
-
-          <!-- 5 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">5. Statistical Models</h4>
                 <p>
@@ -168,10 +168,8 @@
               </div>
             </div>
           </div>
-
-          <!-- 6 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">6. Findings & Interpretation</h4>
                 <p>
@@ -181,10 +179,8 @@
               </div>
             </div>
           </div>
-
-          <!-- 7 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">7. Conclusion</h4>
                 <p>
@@ -194,10 +190,8 @@
               </div>
             </div>
           </div>
-
-          <!-- 8 -->
-          <div class="col-md-6">
-            <div class="card shadow-lg h-100">
+          <div class="col-md-6 col-lg-3">
+            <div class="card shadow-lg hover-card h-100">
               <div class="card-body">
                 <h4 class="fw-bold">8. Appendix</h4>
                 <p>
@@ -210,7 +204,7 @@
       </div>
     </section>
 
-    <!-- FOOTER -->
+    <!-- Footer -->
     <footer class="bg-dark text-white text-center p-3">
       © F1 Fatal Accident Analysis — 2025
     </footer>

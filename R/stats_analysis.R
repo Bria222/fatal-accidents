@@ -1,10 +1,9 @@
-# stats_analysis.R
 library(tidyverse)
 library(broom)
 
 df <- read_csv("data/data_fatal/fatal_accidents_drivers.csv", show_col_types = FALSE)
 
-# Example hypothesis: Are driver ages different between fatal vs non-fatal races?
+
 age_col <- intersect(c("age","driver_age"), names(df))[1]
 status_col <- intersect(c("race_status","status"), names(df))[1]
 
@@ -18,7 +17,7 @@ if (!is.na(age_col) && !is.na(status_col)) {
   message("Missing age or status column: cannot perform t-test")
 }
 
-# Example linear regression: probability of fatal given age and wins (if wins available)
+
 wins_col <- intersect(c("wins","win_count","total_wins"), names(df))
 if (!is.na(age_col) && length(wins_col) > 0) {
   df3 <- df %>% mutate(is_fatal = ifelse(tolower(.data[[status_col]]) %in% c("fatal","death","died","true","1"), 1, 0))

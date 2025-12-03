@@ -1,8 +1,6 @@
-# eda_constructor.R
 library(tidyverse)
 df <- read_csv("data/data_fatal/fatal_accidents_drivers.csv", show_col_types = FALSE)
 
-# Example: fatal incidents by constructor
 cons_col <- intersect(c("constructor","team","constructor_name"), names(df))[1]
 if (!is.na(cons_col)) {
   df %>% filter(!is.na(.data[[cons_col]])) %>%
